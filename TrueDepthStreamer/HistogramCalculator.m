@@ -51,8 +51,6 @@ Class for performing histogram equalization efficiently
     
     for (int i = 1; i < size; ++i)
         histogram[i] = colors - histogram[i];
-    
-
 }
 
 @end

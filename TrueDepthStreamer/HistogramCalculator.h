@@ -13,13 +13,13 @@ Class for performing histogram equalization efficiently
 
 @interface HistogramCalculator : NSObject
 
-+(void) calcHistogramForPixelBuffer:(CVPixelBufferRef)pixelBuffer
-                           toBuffer:(float*)histogram
-                           withSize:(int)size
-                          forColors:(int)colors
-                           minDepth:(float)minDepth
-                           maxDepth:(float)maxDepth
-                      binningFactor:(int)factor;
++ (void) calcHistogramForPixelBuffer:(CVPixelBufferRef)pixelBuffer
+                            toBuffer:(float*)histogram
+                            withSize:(int)size
+                           forColors:(int)colors
+                            minDepth:(float)minDepth
+                            maxDepth:(float)maxDepth
+                       binningFactor:(int)factor;
 
 @end
 

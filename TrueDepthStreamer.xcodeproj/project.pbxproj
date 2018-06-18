@@ -31,6 +31,8 @@
 		2633CF1C1E7C65D500FC80E1 /* DepthToJETConverter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DepthToJETConverter.swift; sourceTree = "<group>"; };
 		2672370D1E79BFBF003D2EAA /* DepthToJET.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; path = DepthToJET.metal; sourceTree = "<group>"; };
 		267ED84D1ED7965A00898078 /* TrueDepthStreamer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TrueDepthStreamer-Bridging-Header.h"; sourceTree = "<group>"; };
+		26C3826026C380D000000001 /* SampleCode.xcconfig */ = {isa = PBXFileReference; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
+		28908F9028908E9000000001 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; path = LICENSE.txt; sourceTree = "<group>"; };
 		6D20BC0F1FFE665100496684 /* PointCloudMetalView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = PointCloudMetalView.mm; sourceTree = "<group>"; };
 		C3444A731FFE6110002D901D /* PointCloudMetalView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PointCloudMetalView.h; sourceTree = "<group>"; };
 		C3444A741FFE6110002D901D /* AAPLTransforms.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AAPLTransforms.mm; sourceTree = "<group>"; };
@@ -38,8 +40,6 @@
 		C3444A781FFE6110002D901D /* AAPLTransforms.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AAPLTransforms.h; sourceTree = "<group>"; };
 		C3B256711FDE655100617DD7 /* HistogramCalculator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HistogramCalculator.m; sourceTree = "<group>"; };
 		C3B256721FDE655200617DD7 /* HistogramCalculator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HistogramCalculator.h; sourceTree = "<group>"; };
-		C8798080C879905000000001 /* SampleCode.xcconfig */ = {isa = PBXFileReference; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
-		C87E9A10C87E98B000000001 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; path = LICENSE.txt; sourceTree = "<group>"; };
 		E414FC6C1D5921FD0007C979 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		E422DFB71CEF894F0047D7A4 /* TrueDepthStreamer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TrueDepthStreamer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E422DFBF1CEF894F0047D7A4 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -75,6 +75,23 @@
 			path = Shaders;
 			sourceTree = "<group>";
 		};
+		26C3860026C3856000000001 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				26C3826026C380D000000001 /* SampleCode.xcconfig */,
+			);
+			name = Configuration;
+			sourceTree = "<group>";
+		};
+		28908660289084B000000001 /* LICENSE */ = {
+			isa = PBXGroup;
+			children = (
+				28908F9028908E9000000001 /* LICENSE.txt */,
+			);
+			name = LICENSE;
+			path = LICENSE;
+			sourceTree = "<group>";
+		};
 		8F7DEDF83CEB2358D1CCC092 /* Configuration */ = {
 			isa = PBXGroup;
 			children = (
@@ -93,23 +110,6 @@
 			path = PointCloud;
 			sourceTree = "<group>";
 		};
-		C87994B0C87990B000000001 /* Configuration */ = {
-			isa = PBXGroup;
-			children = (
-				C8798080C879905000000001 /* SampleCode.xcconfig */,
-			);
-			name = Configuration;
-			sourceTree = "<group>";
-		};
-		C87EB090C87EB06000000001 /* LICENSE */ = {
-			isa = PBXGroup;
-			children = (
-				C87E9A10C87E98B000000001 /* LICENSE.txt */,
-			);
-			name = LICENSE;
-			path = LICENSE;
-			sourceTree = "<group>";
-		};
 		E422DFAE1CEF894F0047D7A4 = {
 			isa = PBXGroup;
 			children = (
@@ -117,8 +117,8 @@
 				E422DFB91CEF894F0047D7A4 /* TrueDepthStreamer */,
 				E422DFB81CEF894F0047D7A4 /* Products */,
 				8F7DEDF83CEB2358D1CCC092 /* Configuration */,
-				C87994B0C87990B000000001 /* Configuration */,
-				C87EB090C87EB06000000001 /* LICENSE */,
+				26C3860026C3856000000001 /* Configuration */,
+				28908660289084B000000001 /* LICENSE */,
 			);
 			sourceTree = "<group>";
 		};
@@ -266,7 +266,7 @@
 /* Begin XCBuildConfiguration section */
 		E422DFC71CEF894F0047D7A4 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C8798080C879905000000001 /* SampleCode.xcconfig */;
+			baseConfigurationReference = 26C3826026C380D000000001 /* SampleCode.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPRESSION = lossless;
@@ -327,7 +327,7 @@
 		};
 		E422DFC81CEF894F0047D7A4 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C8798080C879905000000001 /* SampleCode.xcconfig */;
+			baseConfigurationReference = 26C3826026C380D000000001 /* SampleCode.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPRESSION = "respect-asset-catalog";
@@ -382,7 +382,7 @@
 		};
 		E422DFCA1CEF894F0047D7A4 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C8798080C879905000000001 /* SampleCode.xcconfig */;
+			baseConfigurationReference = 26C3826026C380D000000001 /* SampleCode.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -408,7 +408,7 @@
 		};
 		E422DFCB1CEF894F0047D7A4 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C8798080C879905000000001 /* SampleCode.xcconfig */;
+			baseConfigurationReference = 26C3826026C380D000000001 /* SampleCode.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

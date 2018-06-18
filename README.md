@@ -22,7 +22,7 @@ The `startRunning` method is a blocking call that may take time to execute. Disp
 
 ``` swift
 sessionQueue.async {
-          self.configureSession()
+    self.configureSession()
 }
 ```
 
@@ -39,11 +39,11 @@ Explicitly add this output type to your capture session:
 ``` swift
 session.addOutput(depthDataOutput)
 depthDataOutput.isFilteringEnabled = false
-         if let connection = depthDataOutput.connection(with: .depthData) {
-             connection.isEnabled = true
-         } else {
-             print("No AVCaptureConnection")
-         }
+if let connection = depthDataOutput.connection(with: .depthData) {
+    connection.isEnabled = true
+} else {
+    print("No AVCaptureConnection")
+}
 ```
 
 Search for the highest resolution available with floating-point depth values, and lock the configuration to the format.
@@ -51,10 +51,10 @@ Search for the highest resolution available with floating-point depth values, an
 ``` swift
 let depthFormats = videoDevice.activeFormat.supportedDepthDataFormats
 let filtered = depthFormats.filter({
-    $0.formatDescription.mediaSubType == kCVPixelFormatType_DepthFloat16
+    CMFormatDescriptionGetMediaSubType($0.formatDescription) == kCVPixelFormatType_DepthFloat16
 })
 let selectedFormat = filtered.max(by: {
-    first, second in first.formatDescription.videoDimensions.width < second.formatDescription.videoDimensions.width
+    first, second in CMVideoFormatDescriptionGetDimensions(first.formatDescription).width < CMVideoFormatDescriptionGetDimensions(second.formatDescription).width
 })
 
 do {
@@ -86,22 +86,22 @@ The sample uses JET color coding to distinguish depth values, ranging from red (
 
 ``` swift
 var cvTextureOut: CVMetalTexture?
-      CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache, pixelBuffer, nil, textureFormat, width, height, 0, &cvTextureOut)
-      guard let cvTexture = cvTextureOut, let texture = CVMetalTextureGetTexture(cvTexture) else {
-          print("Depth converter failed to create preview texture")
-          CVMetalTextureCacheFlush(textureCache, 0)
-          return nil
-      }
+CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache, pixelBuffer, nil, textureFormat, width, height, 0, &cvTextureOut)
+guard let cvTexture = cvTextureOut, let texture = CVMetalTextureGetTexture(cvTexture) else {
+    print("Depth converter failed to create preview texture")
+    CVMetalTextureCacheFlush(textureCache, 0)
+    return nil
+}
 ```
 
 ## Visualize Depth Data in 3D
 
 The sample’s 3D viewer renders data as a point cloud.  Control the camera with the following gestures:
 
-	•	Pinch to zoom.
-	•	Pan to move the camera around the center.
-	•	Rotate with two fingers to turn the camera angle.
-	•	Double-tap the screen to reset the initial; position.
+* Pinch to zoom.  
+* Pan to move the camera around the center.  
+* Rotate with two fingers to turn the camera angle.  
+* Double-tap the screen to reset the initial position.  
 
 The sample implements a 3D point cloud as a `PointCloudMetalView`.  It uses a Metal vertex shader to control geometry and a Metal fragment shader to color individual vertices, keeping the depth texture and color texture separate:
 
@@ -160,28 +160,28 @@ Processing depth data from a live stream may cause the device to heat up.  Keep 
 ``` swift
 @objc
 func thermalStateChanged(notification: NSNotification) {
-       if let processInfo = notification.object as? ProcessInfo {
-           showThermalState(state: processInfo.thermalState)
-       }
-   }
+    if let processInfo = notification.object as? ProcessInfo {
+        showThermalState(state: processInfo.thermalState)
+    }
+}
 
-   func showThermalState(state: ProcessInfo.ThermalState) {
-       DispatchQueue.main.async {
-           var thermalStateString = "UNKNOWN"
-           if state == .nominal {
-               thermalStateString = "NOMINAL"
-           } else if state == .fair {
-               thermalStateString = "FAIR"
-           } else if state == .serious {
-               thermalStateString = "SERIOUS"
-           } else if state == .critical {
-               thermalStateString = "CRITICAL"
-           }
-           
-           let message = NSLocalizedString("Thermal state: \(thermalStateString)", comment: "Alert message when thermal state has changed")
-           let alertController = UIAlertController(title: "TrueDepthStreamer", message: message, preferredStyle: .alert)
-           alertController.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: "Alert OK button"), style: .cancel, handler: nil))
-           self.present(alertController, animated: true, completion: nil)
-       }
-   }
+func showThermalState(state: ProcessInfo.ThermalState) {
+    DispatchQueue.main.async {
+        var thermalStateString = "UNKNOWN"
+        if state == .nominal {
+            thermalStateString = "NOMINAL"
+        } else if state == .fair {
+            thermalStateString = "FAIR"
+        } else if state == .serious {
+            thermalStateString = "SERIOUS"
+        } else if state == .critical {
+            thermalStateString = "CRITICAL"
+        }
+        
+        let message = NSLocalizedString("Thermal state: \(thermalStateString)", comment: "Alert message when thermal state has changed")
+        let alertController = UIAlertController(title: "TrueDepthStreamer", message: message, preferredStyle: .alert)
+        alertController.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: "Alert OK button"), style: .cancel, handler: nil))
+        self.present(alertController, animated: true, completion: nil)
+    }
+}
 ```

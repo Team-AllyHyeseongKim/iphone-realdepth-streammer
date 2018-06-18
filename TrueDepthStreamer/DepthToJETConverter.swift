@@ -95,20 +95,20 @@ class ColorTable: NSObject {
 }
 
 class DepthToJETConverter: FilterRenderer {
-
-	var description: String = "Depth to JET Converter"
-
-	var isPrepared = false
-
-	private(set) var inputFormatDescription: CMFormatDescription?
-
-	private(set) var outputFormatDescription: CMFormatDescription?
-
-	private var inputTextureFormat: MTLPixelFormat = .invalid
-
-	private var outputPixelBufferPool: CVPixelBufferPool!
     
-	private let metalDevice = MTLCreateSystemDefaultDevice()!
+    var description: String = "Depth to JET Converter"
+    
+    var isPrepared = false
+    
+    private(set) var inputFormatDescription: CMFormatDescription?
+    
+    private(set) var outputFormatDescription: CMFormatDescription?
+    
+    private var inputTextureFormat: MTLPixelFormat = .invalid
+    
+    private var outputPixelBufferPool: CVPixelBufferPool!
+    
+    private let metalDevice = MTLCreateSystemDefaultDevice()!
     
     private let jetParams = JETParams()
     
@@ -118,24 +118,24 @@ class DepthToJETConverter: FilterRenderer {
     
     private let histogramBuffer: MTLBuffer
     
-	private var computePipelineState: MTLComputePipelineState?
-
+    private var computePipelineState: MTLComputePipelineState?
+    
     private lazy var commandQueue: MTLCommandQueue? = {
         return self.metalDevice.makeCommandQueue()
     }()
-
-	private var textureCache: CVMetalTextureCache!
-		
-	private var colorBuf: MTLBuffer?
-
-	required init() {
-		let defaultLibrary = metalDevice.makeDefaultLibrary()!
-		let kernelFunction = defaultLibrary.makeFunction(name: "depthToJET")
-		do {
-			computePipelineState = try metalDevice.makeComputePipelineState(function: kernelFunction!)
-		} catch {
-			fatalError("Unable to create depth converter pipeline state. (\(error))")
-		}
+    
+    private var textureCache: CVMetalTextureCache!
+    
+    private var colorBuf: MTLBuffer?
+    
+    required init() {
+        let defaultLibrary = metalDevice.makeDefaultLibrary()!
+        let kernelFunction = defaultLibrary.makeFunction(name: "depthToJET")
+        do {
+            computePipelineState = try metalDevice.makeComputePipelineState(function: kernelFunction!)
+        } catch {
+            fatalError("Unable to create depth converter pipeline state. (\(error))")
+        }
         
         guard let histBuffer = metalDevice.makeBuffer(
             length: MemoryLayout<Float>.size * Int(jetParams.histogramSize),
@@ -148,95 +148,98 @@ class DepthToJETConverter: FilterRenderer {
         guard let jetBuffer = metalDevice.makeBuffer(length: MemoryLayout<JETParams>.size, options: .storageModeShared) else {
             fatalError("Failed to allocate buffer for histogram size")
         }
-
+        
         jetBuffer.contents().bindMemory(to: JETParams.self, capacity: 1)
             .assign(repeating: self.jetParams, count: 1)
-
+        
         self.jetParamsBuffer = jetBuffer
-	}
-
-	static private func allocateOutputBufferPool(with formatDescription: CMFormatDescription, outputRetainedBufferCountHint: Int) -> CVPixelBufferPool? {
-		let inputDimensions = formatDescription.videoDimensions
-		let outputPixelBufferAttributes: [String: Any] = [
-			kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-			kCVPixelBufferWidthKey as String: Int(inputDimensions.width),
-			kCVPixelBufferHeightKey as String: Int(inputDimensions.height),
-			kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-		]
-
-		let poolAttributes = [kCVPixelBufferPoolMinimumBufferCountKey as String: outputRetainedBufferCountHint]
-		var cvPixelBufferPool: CVPixelBufferPool?
-		// Create a pixel buffer pool with the same pixel attributes as the input format description
-		CVPixelBufferPoolCreate(kCFAllocatorDefault, poolAttributes as NSDictionary?, outputPixelBufferAttributes as NSDictionary?, &cvPixelBufferPool)
-		guard let pixelBufferPool = cvPixelBufferPool else {
-			assertionFailure("Allocation failure: Could not create pixel buffer pool")
-			return nil
-		}
-		return pixelBufferPool
-	}
-
-	func prepare(with formatDescription: CMFormatDescription, outputRetainedBufferCountHint: Int) {
-		reset()
-
-		outputPixelBufferPool = DepthToJETConverter.allocateOutputBufferPool(with: formatDescription,
-		                                                                           outputRetainedBufferCountHint: outputRetainedBufferCountHint)
-		if outputPixelBufferPool == nil {
-			return
-		}
-
-		var pixelBuffer: CVPixelBuffer?
-		var pixelBufferFormatDescription: CMFormatDescription?
-		_ = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, outputPixelBufferPool!, &pixelBuffer)
-		if let pixelBuffer = pixelBuffer {
-			CMFormatDescription.createForVideo(allocator: kCFAllocatorDefault, imageBuffer: pixelBuffer, formatDescriptionOut: &pixelBufferFormatDescription)
-		}
-		pixelBuffer = nil
-
-		inputFormatDescription = formatDescription
-		outputFormatDescription = pixelBufferFormatDescription
-
-		let inputMediaSubType = formatDescription.mediaSubType
-		if inputMediaSubType == kCVPixelFormatType_DepthFloat16 {
-			inputTextureFormat = .r16Float
-		} else {
-			assertionFailure("Input format not supported")
-		}
-
-		var metalTextureCache: CVMetalTextureCache?
-		if CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, metalDevice, nil, &metalTextureCache) != kCVReturnSuccess {
-			assertionFailure("Unable to allocate depth converter texture cache")
-		} else {
-			textureCache = metalTextureCache
-		}
-
+    }
+    
+    static private func allocateOutputBufferPool(with formatDescription: CMFormatDescription,
+                                                 outputRetainedBufferCountHint: Int) -> CVPixelBufferPool? {
+        let inputDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription)
+        let outputBufferAttributes: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: Int(inputDimensions.width),
+            kCVPixelBufferHeightKey as String: Int(inputDimensions.height),
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+        ]
+        
+        let poolAttributes = [kCVPixelBufferPoolMinimumBufferCountKey as String: outputRetainedBufferCountHint]
+        var cvPixelBufferPool: CVPixelBufferPool?
+        // Create a pixel buffer pool with the same pixel attributes as the input format description
+        CVPixelBufferPoolCreate(kCFAllocatorDefault, poolAttributes as NSDictionary?, outputBufferAttributes as NSDictionary?, &cvPixelBufferPool)
+        guard let pixelBufferPool = cvPixelBufferPool else {
+            assertionFailure("Allocation failure: Could not create pixel buffer pool")
+            return nil
+        }
+        return pixelBufferPool
+    }
+    
+    func prepare(with formatDescription: CMFormatDescription, outputRetainedBufferCountHint: Int) {
+        reset()
+        
+        outputPixelBufferPool = DepthToJETConverter.allocateOutputBufferPool(with: formatDescription,
+                                                                             outputRetainedBufferCountHint: outputRetainedBufferCountHint)
+        if outputPixelBufferPool == nil {
+            return
+        }
+        
+        var pixelBuffer: CVPixelBuffer?
+        var pixelBufferFormatDescription: CMFormatDescription?
+        _ = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, outputPixelBufferPool!, &pixelBuffer)
+        if pixelBuffer != nil {
+            CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault,
+                                                         imageBuffer: pixelBuffer!,
+                                                         formatDescriptionOut: &pixelBufferFormatDescription)
+        }
+        pixelBuffer = nil
+        
+        inputFormatDescription = formatDescription
+        outputFormatDescription = pixelBufferFormatDescription
+        
+        let inputMediaSubType = CMFormatDescriptionGetMediaSubType(formatDescription)
+        if inputMediaSubType == kCVPixelFormatType_DepthFloat16 {
+            inputTextureFormat = .r16Float
+        } else {
+            assertionFailure("Input format not supported")
+        }
+        
+        var metalTextureCache: CVMetalTextureCache?
+        if CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, metalDevice, nil, &metalTextureCache) != kCVReturnSuccess {
+            assertionFailure("Unable to allocate depth converter texture cache")
+        } else {
+            textureCache = metalTextureCache
+        }
+        
         let colorTable = ColorTable(metalDevice: metalDevice, size: self.colors)
         colorBuf = colorTable.getColorTable()
-
-		isPrepared = true
-	}
-
-	func reset() {
-		outputPixelBufferPool = nil
-		outputFormatDescription = nil
-		inputFormatDescription = nil
-		textureCache = nil
-		isPrepared = false
-	}
-
+        
+        isPrepared = true
+    }
+    
+    func reset() {
+        outputPixelBufferPool = nil
+        outputFormatDescription = nil
+        inputFormatDescription = nil
+        textureCache = nil
+        isPrepared = false
+    }
+    
     // MARK: - Depth to JET Conversion
     
-	func render(pixelBuffer: CVPixelBuffer) -> CVPixelBuffer? {
-		if !isPrepared {
-			assertionFailure("Invalid state: Not prepared")
-			return nil
-		}
-
-		var newPixelBuffer: CVPixelBuffer?
-		CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, outputPixelBufferPool!, &newPixelBuffer)
-		guard let outputPixelBuffer = newPixelBuffer else {
-			print("Allocation failure: Could not get pixel buffer from pool (\(self.description))")
-			return nil
-		}
+    func render(pixelBuffer: CVPixelBuffer) -> CVPixelBuffer? {
+        if !isPrepared {
+            assertionFailure("Invalid state: Not prepared")
+            return nil
+        }
+        
+        var newPixelBuffer: CVPixelBuffer?
+        CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, outputPixelBufferPool!, &newPixelBuffer)
+        guard let outputPixelBuffer = newPixelBuffer else {
+            print("Allocation failure: Could not get pixel buffer from pool (\(self.description))")
+            return nil
+        }
         
         let hist = histogramBuffer.contents().bindMemory(to: Float.self, capacity: Int(self.jetParams.histogramSize))
         
@@ -247,12 +250,12 @@ class DepthToJETConverter: FilterRenderer {
                                           minDepth: 0.0,
                                           maxDepth: 5.0,
                                           binningFactor: self.jetParams.binningFactor)
-
+        
         guard let outputTexture = makeTextureFromCVPixelBuffer(pixelBuffer: outputPixelBuffer, textureFormat: .bgra8Unorm),
-              let inputTexture = makeTextureFromCVPixelBuffer(pixelBuffer: pixelBuffer, textureFormat: inputTextureFormat) else {
-            return nil
+            let inputTexture = makeTextureFromCVPixelBuffer(pixelBuffer: pixelBuffer, textureFormat: inputTextureFormat) else {
+                return nil
         }
-
+        
         // Set up command queue, buffer, and encoder
         guard let commandQueue = commandQueue,
             let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -261,7 +264,7 @@ class DepthToJETConverter: FilterRenderer {
                 CVMetalTextureCacheFlush(textureCache!, 0)
                 return nil
         }
-
+        
         commandEncoder.label = "Depth to JET"
         commandEncoder.setComputePipelineState(computePipelineState!)
         commandEncoder.setTexture(inputTexture, index: 0)
@@ -269,7 +272,7 @@ class DepthToJETConverter: FilterRenderer {
         commandEncoder.setBuffer(self.jetParamsBuffer, offset: 0, index: 0)
         commandEncoder.setBuffer(self.histogramBuffer, offset: 0, index: 1)
         commandEncoder.setBuffer(colorBuf, offset: 0, index: 2)
-
+        
         // Set up thread groups as described in https://developer.apple.com/reference/metal/mtlcomputecommandencoder
         let width = computePipelineState!.threadExecutionWidth
         let height = computePipelineState!.maxTotalThreadsPerThreadgroup / width
@@ -278,28 +281,27 @@ class DepthToJETConverter: FilterRenderer {
                                           height: (inputTexture.height + height - 1) / height,
                                           depth: 1)
         commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-
+        
         commandEncoder.endEncoding()
-
+        
         commandBuffer.commit()
-
-		return outputPixelBuffer
-	}
-
+        
+        return outputPixelBuffer
+    }
+    
     func makeTextureFromCVPixelBuffer(pixelBuffer: CVPixelBuffer, textureFormat: MTLPixelFormat) -> MTLTexture? {
-		let width = CVPixelBufferGetWidth(pixelBuffer)
-		let height = CVPixelBufferGetHeight(pixelBuffer)
-
-		// Create a Metal texture from the image buffer
-		var cvTextureOut: CVMetalTexture?
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+        
+        // Create a Metal texture from the image buffer
+        var cvTextureOut: CVMetalTexture?
         CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, textureCache, pixelBuffer, nil, textureFormat, width, height, 0, &cvTextureOut)
         guard let cvTexture = cvTextureOut, let texture = CVMetalTextureGetTexture(cvTexture) else {
             print("Depth converter failed to create preview texture")
             CVMetalTextureCacheFlush(textureCache, 0)
             return nil
         }
-
-		return texture
-	}
-
+        
+        return texture
+    }
 }
