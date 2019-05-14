@@ -716,6 +716,9 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
             DispatchQueue.main.async {
                 self.touchDepth.text = ""
             }
+        @unknown default:
+            print("Unknow gesture state.")
+            touchDetected = false
         }
     }
     
@@ -944,6 +947,8 @@ extension PreviewMetalView.Rotation {
                 
             default: return nil
             }
+        @unknown default:
+            fatalError("Unknown orientation. Can't continue.")
         }
     }
 }

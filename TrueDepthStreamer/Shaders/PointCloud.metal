@@ -32,7 +32,7 @@ vertexShaderPoints(uint vertexID [[ vertex_id ]],
     
     // depthDataType is kCVPixelFormatType_DepthFloat16
     float depth = depthTexture.read(pos).x * 1000.0f;
-
+    
     float xrw = (pos.x - cameraIntrinsics[2][0]) * depth / cameraIntrinsics[0][0];
     float yrw = (pos.y - cameraIntrinsics[2][1]) * depth / cameraIntrinsics[1][1];
     
@@ -55,7 +55,7 @@ fragment float4 fragmentShaderPoints(RasterizerDataColor in [[stage_in]],
     {
         constexpr sampler textureSampler (mag_filter::linear,
                                           min_filter::linear);
-
+        
         const float4 colorSample = colorTexture.sample (textureSampler, in.coor);
         return colorSample;
     }

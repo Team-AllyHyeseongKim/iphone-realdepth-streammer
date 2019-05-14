@@ -4,15 +4,15 @@ Visualize depth data in 2D and 3D from the TrueDepth camera.
 
 ## Overview
 
-The TrueDepth camera provides depth data in real time that allows you to determine the distance of a pixel from the front-facing camera.  This sample demonstrates how to use the AVFoundation framework’s capture API to read data from the TrueDepth camera, and how to display it in an intuitive fashion onscreen.
+The TrueDepth camera provides depth data in real time that allows you to determine the distance of a pixel from the front-facing camera. This sample demonstrates how to use the AVFoundation framework’s capture API to read data from the TrueDepth camera, and how to display it in an intuitive fashion onscreen.
 
 The sample shows two different views: a 2D view that distinguishes depth values by mapping depth to color, and a 3D view that renders data as a point cloud.
 
-To see this sample app in action, build and run the project in Xcode on an iOS device running iOS 11 or later.  Because Xcode doesn’t have access to the TrueDepth camera, this sample will not build or run in the Xcode simulator.
+To see this sample app in action, build and run the project in Xcode on an iOS device running iOS 11 or later. Because Xcode doesn’t have access to the TrueDepth camera, this sample will not build or run in the Xcode simulator.
 
 ## Set Up a Capture Session
 
-Set up an `AVCaptureSession` on a separate thread via the session queue.  Initialize this session queue before configuring the camera for capture, like so:  
+Set up an `AVCaptureSession` on a separate thread via the session queue. Initialize this session queue before configuring the camera for capture, like so: 
 
 ``` swift
 private let sessionQueue = DispatchQueue(label: "session queue", attributes: [], autoreleaseFrequency: .workItem)
@@ -26,7 +26,7 @@ sessionQueue.async {
 }
 ```
 
-Setting up the camera for video capture follows many of the same steps as normal video capture.  See [Setting Up a Capture Session](https://developer.apple.com/documentation/avfoundation/cameras_and_media_capture/setting_up_a_capture_session) for details on configuring streaming setup.
+Setting up the camera for video capture follows many of the same steps as normal video capture. See [Setting Up a Capture Session](https://developer.apple.com/documentation/avfoundation/cameras_and_media_capture/setting_up_a_capture_session) for details on configuring streaming setup.
 
 On top of normal setup, request depth data by declaring a separate output:
 
@@ -69,20 +69,20 @@ do {
 }
 ```
 
-Synchronize the normal RGB video data with depth data output.  The first output in the `dataOutputs` array is the master output.
+Synchronize the normal RGB video data with depth data output. The first output in the `dataOutputs` array is the master output.
 
 ``` swift
 outputSynchronizer = AVCaptureDataOutputSynchronizer(dataOutputs: [videoDataOutput, depthDataOutput])
 outputSynchronizer!.setDelegate(self, queue: dataOutputQueue)
 ```
 
-The `CameraViewController` implementation creates and manages this session to interface with the camera.  It also contains UI to toggle between the two viewing modes, 2D and 3D.
+The `CameraViewController` implementation creates and manages this session to interface with the camera. It also contains UI to toggle between the two viewing modes, 2D and 3D.
 
 ## Visualize Depth Data in 2D
 
-The sample uses JET color coding to distinguish depth values, ranging from red (close) to blue (far).  A slider controls the blending of the color code and the actual color values.  Touching a pixel displays its depth value.
+The sample uses JET color coding to distinguish depth values, ranging from red (close) to blue (far). A slider controls the blending of the color code and the actual color values. Touching a pixel displays its depth value.
 
-`DepthToJETConverter` performs the conversion.  It separates the color spectrum into histogram bins, colors a Metal texture from depth values obtained in the image buffer, and renders that texture into the preview.
+`DepthToJETConverter` performs the conversion. It separates the color spectrum into histogram bins, colors a Metal texture from depth values obtained in the image buffer, and renders that texture into the preview.
 
 ``` swift
 var cvTextureOut: CVMetalTexture?
@@ -96,14 +96,14 @@ guard let cvTexture = cvTextureOut, let texture = CVMetalTextureGetTexture(cvTex
 
 ## Visualize Depth Data in 3D
 
-The sample’s 3D viewer renders data as a point cloud.  Control the camera with the following gestures:
+The sample’s 3D viewer renders data as a point cloud. Control the camera with the following gestures:
 
-* Pinch to zoom.  
-* Pan to move the camera around the center.  
-* Rotate with two fingers to turn the camera angle.  
-* Double-tap the screen to reset the initial position.  
+* Pinch to zoom. 
+* Pan to move the camera around the center. 
+* Rotate with two fingers to turn the camera angle. 
+* Double-tap the screen to reset the initial position. 
 
-The sample implements a 3D point cloud as a `PointCloudMetalView`.  It uses a Metal vertex shader to control geometry and a Metal fragment shader to color individual vertices, keeping the depth texture and color texture separate:
+The sample implements a 3D point cloud as a `PointCloudMetalView`. It uses a Metal vertex shader to control geometry and a Metal fragment shader to color individual vertices, keeping the depth texture and color texture separate:
 
 ``` objective-c
 CVMetalTextureCacheRef _depthTextureCache;
@@ -155,7 +155,7 @@ id<MTLTexture> colorTexture = CVMetalTextureGetTexture(cvColorTexture);
 
 ## Track Thermal State
 
-Processing depth data from a live stream may cause the device to heat up.  Keep tabs on the thermal state so you can alert the user if it exceeds a dangerous threshold.
+Processing depth data from a live stream may cause the device to heat up. Keep tabs on the thermal state so you can alert the user if it exceeds a dangerous threshold.
 
 ``` swift
 @objc
