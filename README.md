@@ -1,3 +1,19 @@
+# it is http streammer for bundle fusion custom sensor in another repo.
+
+check http://lodev.org/lodepng/ https://github.com/codecat15/Youtube-tutorial etc.
+
+thanks for all.
+
+
+
+
+
+
+
+
+
+
+
 # Streaming Depth Data from the TrueDepth Camera
 
 Visualize depth data in 2D and 3D from the TrueDepth camera.
