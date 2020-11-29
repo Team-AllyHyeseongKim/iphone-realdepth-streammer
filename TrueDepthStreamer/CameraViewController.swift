@@ -10,9 +10,14 @@ import AVFoundation
 import CoreVideo
 import MobileCoreServices
 import Accelerate
+import ARKit
+
 
 @available(iOS 11.1, *)
 class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDelegate {
+    // MARK: - Heebin custom
+    
+    private var manager : ImageManager?
     
     // MARK: - Properties
     
@@ -82,8 +87,6 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
     
     private var lastXY = CGPoint(x: 0, y: 0)
     
-    private var JETEnabled = false
-    
     private var viewFrameSize = CGSize()
     
     private var autoPanningIndex = Int(0) // start with auto-panning on
@@ -92,34 +95,15 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
     
     override func viewDidLoad() {
         super.viewDidLoad()
+  
+        //heebin
+        manager = ImageManager()
         
         viewFrameSize = self.view.frame.size
         
-        let tapGestureJET = UITapGestureRecognizer(target: self, action: #selector(focusAndExposeTap))
-        jetView.addGestureRecognizer(tapGestureJET)
+
         
-        let pressGestureJET = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPressJET))
-        pressGestureJET.minimumPressDuration = 0.05
-        pressGestureJET.cancelsTouchesInView = false
-        jetView.addGestureRecognizer(pressGestureJET)
         
-        let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch))
-        cloudView.addGestureRecognizer(pinchGesture)
-        
-        let doubleTapGesture = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
-        doubleTapGesture.numberOfTapsRequired = 2
-        doubleTapGesture.numberOfTouchesRequired = 1
-        cloudView.addGestureRecognizer(doubleTapGesture)
-        
-        let rotateGesture = UIRotationGestureRecognizer(target: self, action: #selector(handleRotate))
-        cloudView.addGestureRecognizer(rotateGesture)
-        
-        let panOneFingerGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePanOneFinger))
-        panOneFingerGesture.maximumNumberOfTouches = 1
-        panOneFingerGesture.minimumNumberOfTouches = 1
-        cloudView.addGestureRecognizer(panOneFingerGesture)
-        
-        cloudToJETSegCtrl.selectedSegmentIndex = 1
         
         // Check video authorization status, video access is required
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -155,9 +139,21 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
          take a long time. We dispatch session setup to the sessionQueue so
          that the main queue isn't blocked, which keeps the UI responsive.
          */
+        
+        //heebin
+        sessionQueue.sync {
+        
+        self.jetView.isHidden = false
+        //깊이 맵을 스무스하게 해주는 것인데, 왜곡과는 무관 한 것 같다.
+        self.depthDataOutput.isFilteringEnabled = true
+        self.videoDepthMixer.mixFactor =  Float(1.0)
+        }
+        
         sessionQueue.async {
             self.configureSession()
+
         }
+        
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -166,10 +162,6 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
         let interfaceOrientation = UIApplication.shared.statusBarOrientation
         statusBarOrientation = interfaceOrientation
         
-        let initialThermalState = ProcessInfo.processInfo.thermalState
-        if initialThermalState == .serious || initialThermalState == .critical {
-            showThermalState(state: initialThermalState)
-        }
         
         sessionQueue.async {
             switch self.setupResult {
@@ -220,6 +212,10 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
                     }
                 }
             }
+        
+
+            
+        
         }
     }
     
@@ -259,33 +255,7 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
         }
     }
     
-    // You can use this opportunity to take corrective action to help cool the system down.
-    @objc
-    func thermalStateChanged(notification: NSNotification) {
-        if let processInfo = notification.object as? ProcessInfo {
-            showThermalState(state: processInfo.thermalState)
-        }
-    }
-    
-    func showThermalState(state: ProcessInfo.ThermalState) {
-        DispatchQueue.main.async {
-            var thermalStateString = "UNKNOWN"
-            if state == .nominal {
-                thermalStateString = "NOMINAL"
-            } else if state == .fair {
-                thermalStateString = "FAIR"
-            } else if state == .serious {
-                thermalStateString = "SERIOUS"
-            } else if state == .critical {
-                thermalStateString = "CRITICAL"
-            }
-            
-            let message = NSLocalizedString("Thermal state: \(thermalStateString)", comment: "Alert message when thermal state has changed")
-            let alertController = UIAlertController(title: "TrueDepthStreamer", message: message, preferredStyle: .alert)
-            alertController.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: "Alert OK button"), style: .cancel, handler: nil))
-            self.present(alertController, animated: true, completion: nil)
-        }
-    }
+
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         return .all
     }
@@ -321,8 +291,6 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
                                                name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(willEnterForground),
                                                name: UIApplication.willEnterForegroundNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(thermalStateChanged),
-                                               name: ProcessInfo.thermalStateDidChangeNotification,	object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(sessionRuntimeError),
                                                name: NSNotification.Name.AVCaptureSessionRuntimeError, object: session)
         
@@ -475,47 +443,8 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
         }
     }
     
-    @IBAction private func changeMixFactor(_ sender: UISlider) {
-        let mixFactor = sender.value
-        
-        dataOutputQueue.async {
-            self.videoDepthMixer.mixFactor = mixFactor
-        }
-    }
+
     
-    @IBAction private func changeDepthSmoothing(_ sender: UISwitch) {
-        let smoothingEnabled = sender.isOn
-        
-        sessionQueue.async {
-            self.depthDataOutput.isFilteringEnabled = smoothingEnabled
-        }
-    }
-    
-    @IBAction func changeCloudToJET(_ sender: UISegmentedControl) {
-        JETEnabled = (sender.selectedSegmentIndex == 0)
-        
-        sessionQueue.sync {
-            if JETEnabled {
-                self.depthDataOutput.isFilteringEnabled = self.depthSmoothingSwitch.isOn
-            } else {
-                self.depthDataOutput.isFilteringEnabled = false
-            }
-            
-            self.cloudView.isHidden = JETEnabled
-            self.jetView.isHidden = !JETEnabled
-        }
-    }
-    
-    @IBAction private func focusAndExposeTap(_ gesture: UITapGestureRecognizer) {
-        let location = gesture.location(in: jetView)
-        guard let texturePoint = jetView.texturePointForView(point: location) else {
-            return
-        }
-        
-        let textureRect = CGRect(origin: texturePoint, size: .zero)
-        let deviceRect = videoDataOutput.metadataOutputRectConverted(fromOutputRect: textureRect)
-        focus(with: .autoFocus, exposureMode: .autoExpose, at: deviceRect.origin, monitorSubjectAreaChange: true)
-    }
     
     @objc
     func subjectAreaDidChange(notification: NSNotification) {
@@ -627,109 +556,6 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
         }
     }
     
-    // MARK: - Point cloud view gestures
-    
-    @IBAction private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
-        if gesture.numberOfTouches != 2 {
-            return
-        }
-        if gesture.state == .began {
-            lastScale = 1
-        } else if gesture.state == .changed {
-            let scale = Float(gesture.scale)
-            let diff: Float = scale - lastScale
-            let factor: Float = 1e3
-            if scale < lastScale {
-                lastZoom = diff * factor
-            } else {
-                lastZoom = diff * factor
-            }
-            DispatchQueue.main.async {
-                self.autoPanningSwitch.isOn = false
-                self.autoPanningIndex = -1
-            }
-            cloudView.moveTowardCenter(lastZoom)
-            lastScale = scale
-        } else if gesture.state == .ended {
-        } else {
-        }
-    }
-    
-    @IBAction private func handlePanOneFinger(gesture: UIPanGestureRecognizer) {
-        if gesture.numberOfTouches != 1 {
-            return
-        }
-        
-        if gesture.state == .began {
-            let pnt: CGPoint = gesture.translation(in: cloudView)
-            lastXY = pnt
-        } else if (.failed != gesture.state) && (.cancelled != gesture.state) {
-            let pnt: CGPoint = gesture.translation(in: cloudView)
-            DispatchQueue.main.async {
-                self.autoPanningSwitch.isOn = false
-                self.autoPanningIndex = -1
-            }
-            cloudView.yawAroundCenter(Float((pnt.x - lastXY.x) * 0.1))
-            cloudView.pitchAroundCenter(Float((pnt.y - lastXY.y) * 0.1))
-            lastXY = pnt
-        }
-    }
-    
-    @IBAction private func handleDoubleTap(gesture: UITapGestureRecognizer) {
-        DispatchQueue.main.async {
-            self.autoPanningSwitch.isOn = false
-            self.autoPanningIndex = -1
-        }
-        cloudView.resetView()
-    }
-    
-    @IBAction private func handleRotate(gesture: UIRotationGestureRecognizer) {
-        if gesture.numberOfTouches != 2 {
-            return
-        }
-        
-        if gesture.state == .changed {
-            let rot = Float(gesture.rotation)
-            DispatchQueue.main.async {
-                self.autoPanningSwitch.isOn = false
-                self.autoPanningIndex = -1
-            }
-            cloudView.rollAroundCenter(rot * 60)
-            gesture.rotation = 0
-        }
-    }
-    
-    // MARK: - JET view Depth label gesture
-    
-    @IBAction private func handleLongPressJET(gesture: UILongPressGestureRecognizer) {
-        
-        switch gesture.state {
-        case .began:
-            touchDetected = true
-            let pnt: CGPoint = gesture.location(in: self.jetView)
-            touchCoordinates = pnt
-        case .changed:
-            let pnt: CGPoint = gesture.location(in: self.jetView)
-            touchCoordinates = pnt
-        case .possible, .ended, .cancelled, .failed:
-            touchDetected = false
-            DispatchQueue.main.async {
-                self.touchDepth.text = ""
-            }
-        @unknown default:
-            print("Unknow gesture state.")
-            touchDetected = false
-        }
-    }
-    
-    @IBAction func didAutoPanningChange(_ sender: Any) {
-        if autoPanningSwitch.isOn {
-            self.autoPanningIndex = 0
-        } else {
-            self.autoPanningIndex = -1
-        }
-    }
-    
     // MARK: - Video + Depth Frame Processing
     
     func dataOutputSynchronizer(_ synchronizer: AVCaptureDataOutputSynchronizer,
@@ -754,6 +580,25 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
         }
         
         let depthData = syncedDepthData.depthData
+        
+        /*
+        let d = depthData.depthDataAccuracy
+        //절대
+        let q = depthData.cameraCalibrationData?.intrinsicMatrix
+        /*
+         q    matrix_float3x3?    \n[ [2.878019e+03, 0.000000e+00, 1.534527e+03],\n  [0.000000e+00, 2.878019e+03, 1.150864e+03],\n  [0.000000e+00, 0.000000e+00, 1.000000e+00] ]\n    some
+         */
+        let p = depthData.depthDataType
+        //p    OSType    1751410032
+        let x = depthData.availableDepthDataTypes
+        
+        depthData = depthData.converting(toDepthDataType: 1717855600)
+        */
+        
+      
+        
+        
+        
         let depthPixelBuffer = depthData.depthDataMap
         let sampleBuffer = syncedVideoData.sampleBuffer
         guard let videoPixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
@@ -761,101 +606,219 @@ class CameraViewController: UIViewController, AVCaptureDataOutputSynchronizerDel
                 return
         }
         
-        if JETEnabled {
-            if !videoDepthConverter.isPrepared {
-                /*
-                 outputRetainedBufferCountHint is the number of pixel buffers we expect to hold on to from the renderer.
-                 This value informs the renderer how to size its buffer pool and how many pixel buffers to preallocate. Allow 2 frames of latency
-                 to cover the dispatch_async call.
-                 */
-                var depthFormatDescription: CMFormatDescription?
-                CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault,
-                                                             imageBuffer: depthPixelBuffer,
-                                                             formatDescriptionOut: &depthFormatDescription)
-                videoDepthConverter.prepare(with: depthFormatDescription!, outputRetainedBufferCountHint: 2)
-            }
-            
-            guard let jetPixelBuffer = videoDepthConverter.render(pixelBuffer: depthPixelBuffer) else {
-                print("Unable to process depth")
-                return
-            }
-            
-            if !videoDepthMixer.isPrepared {
-                videoDepthMixer.prepare(with: formatDescription, outputRetainedBufferCountHint: 3)
-            }
-            
-            // Mix the video buffer with the last depth data we received
-            guard let mixedBuffer = videoDepthMixer.mix(videoPixelBuffer: videoPixelBuffer, depthPixelBuffer: jetPixelBuffer) else {
-                print("Unable to combine video and depth")
-                return
-            }
-            
-            jetView.pixelBuffer = mixedBuffer
-            
-            updateDepthLabel(depthFrame: depthPixelBuffer, videoFrame: videoPixelBuffer)
-        } else {
-            // point cloud
-            if self.autoPanningIndex >= 0 {
-                
-                // perform a circle movement
-                let moves = 200
-                
-                let factor = 2.0 * .pi / Double(moves)
-                
-                let pitch = sin(Double(self.autoPanningIndex) * factor) * 2
-                let yaw = cos(Double(self.autoPanningIndex) * factor) * 2
-                self.autoPanningIndex = (self.autoPanningIndex + 1) % moves
-                
-                cloudView?.resetView()
-                cloudView?.pitchAroundCenter(Float(pitch) * 10)
-                cloudView?.yawAroundCenter(Float(yaw) * 10)
-            }
-            
-            cloudView?.setDepthFrame(depthData, withTexture: videoPixelBuffer)
-        }
-    }
-    
-    func updateDepthLabel(depthFrame: CVPixelBuffer, videoFrame: CVPixelBuffer) {
+        /*
+        let q = depthData.cameraCalibrationData?.intrinsicMatrix
+        let tt = depthData.cameraCalibrationData?.intrinsicMatrixReferenceDimensions
         
-        if touchDetected {
-            guard let texturePoint = jetView.texturePointForView(point: self.touchCoordinates) else {
-                DispatchQueue.main.async {
-                    self.touchDepth.text = ""
+        
+        let qq = depthData.cameraCalibrationData?.lensDistortionCenter
+        let ppxx = depthData.cameraCalibrationData?.lensDistortionLookupTable
+        
+        //1이미지 픽셀이 xxtt밀리미터라고
+        let xxtt = depthData.cameraCalibrationData?.pixelSize
+        */
+        
+        
+        
+        let undist = Undistorter.init()
+        let pngWrap = PngWrapper.init()
+        
+        //heebin
+        OperationQueue().addOperation {
+            
+            /*
+            let ee = CVPixelBufferGetWidth(videoPixelBuffer) //640
+            let xddx = CVPixelBufferGetHeight(videoPixelBuffer) //480
+            
+            let qqccdd = CFGetTypeID(videoPixelBuffer) //픽셀버퍼인 걸로 판명남
+            let cccdd = CVPixelBufferGetTypeID()
+            
+            let cccc = CVPixelBufferGetPixelFormatType(videoPixelBuffer) // CV32BGRA 8*4
+            let cxcc = CVPixelBufferGetDataSize(videoPixelBuffer) // 1228864 64바이트는 도대체....?
+            
+            let cdcdvv = CVPixelBufferIsPlanar(videoPixelBuffer) //플레너는 아니래, 그게 뭔진 모르지만
+             
+            let cldld = CVPixelBufferGetDataSize(depthFrame) // byte 단위, 4바이트 * 640 * 480 = 1228800
+            */
+            
+            
+            let depthFrame = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat32).depthDataMap
+           
+            
+            
+                let width = CVPixelBufferGetWidth(depthFrame)
+                let height = CVPixelBufferGetHeight(depthFrame)
+            
+                var convertedDepthMap: [UInt16] = Array(
+                    repeating: 0,
+                    count: height * width
+                )
+            
+                var convertedColorMap: [UInt32] = Array(
+                    repeating: 0,
+                    count: height * width
+                )
+            
+                CVPixelBufferLockBaseAddress(depthFrame, .readOnly)
+                CVPixelBufferLockBaseAddress(videoPixelBuffer, .readOnly)
+            
+            
+                let floatBuffer = unsafeBitCast(
+                    CVPixelBufferGetBaseAddress(depthFrame),
+                    to: UnsafeMutablePointer<Float32>.self
+                )
+                let integerBuffer = unsafeBitCast(
+                    CVPixelBufferGetBaseAddress(videoPixelBuffer),
+                    to: UnsafeMutablePointer<UInt32>.self
+                )
+            
+                for row in 0 ..< height {//480 i row y
+                    for col in 0 ..< width {//640 j col x
+                        
+                        
+                        let new_point = undist.lensDistortionPoint(for: CGPoint.init(x: col, y: row), lookupTable: (depthData.cameraCalibrationData?.lensDistortionLookupTable)!, distortionOpticalCenter: depthData.cameraCalibrationData!.lensDistortionCenter, imageSize: CGSize.init(width: width, height: height))
+                        
+                        let new_x = Int(new_point.x)
+                        let new_y = Int(new_point.y)
+                        if (640 > new_x && new_x >= 0) && (480 > new_y && new_y >= 0){
+                        
+                            if floatBuffer[width * row + col].isNaN {
+                                convertedDepthMap[width * new_y + new_x] = 0
+                            }
+                            else{
+                                convertedDepthMap[width * new_y + new_x] = UInt16(floatBuffer[width * row + col] * 1000)
+                            }
+                            
+                            convertedColorMap[width * new_y + new_x] = integerBuffer[width * row + col]
+                        }
+                        
+                        
+                    }
                 }
-                return
+                CVPixelBufferUnlockBaseAddress(videoPixelBuffer, .readOnly)
+                CVPixelBufferUnlockBaseAddress(depthFrame, .readOnly)
+              
+            
+            let depthMapPtr = UnsafeMutableBufferPointer<UInt16>(start: &convertedDepthMap, count: convertedDepthMap.count)
+            
+            let depth_data = pngWrap.uInt16Array2PngData(depthMapPtr.baseAddress!, width: width, height: height)
+            
+            let colorMapPtr = UnsafeMutableBufferPointer<UInt32>(start: &convertedColorMap, count: convertedColorMap.count)
+            
+            let color_data = pngWrap.uInt32Array2PngData(colorMapPtr.baseAddress!, width: width, height: height)
+
+            
+            /*구식, 비압축
+            //여기서 카운트는 바이트 수
+            // bytes에 넣는 것은 UnsafeRawPointer임
+            let depth_data = Data.init(bytes: convertedDepthMap, count: width * height * 2)
+            let color_data = Data.init(bytes: convertedColorMap, count: width * height * 4)
+            */
+            
+            self.manager?.uploadImage(color_data:color_data, depth_data:depth_data)
+            
+            
+            
+            
+            /*
+            let depthFrame = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat32).depthDataMap
+            var outPixelBuffer: CVPixelBuffer?
+            
+            CVPixelBufferLockBaseAddress(depthFrame, .readOnly)
+            
+            let width = CVPixelBufferGetWidth(depthFrame)
+            let height = CVPixelBufferGetHeight(depthFrame)
+            
+            _ = CVPixelBufferCreate( kCFAllocatorDefault,
+                                              width,
+                                              height,
+                                              kCVPixelFormatType_16Gray,
+                                              nil,
+                                              &outPixelBuffer);
+           
+            CVPixelBufferLockBaseAddress(outPixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
+           
+            for yMap in 0 ..< height {
+                let rowData = CVPixelBufferGetBaseAddress(depthFrame)! + yMap * CVPixelBufferGetBytesPerRow(depthFrame)
+                let data = UnsafeMutableBufferPointer<Float32>(start: rowData.assumingMemoryBound(to: Float32.self), count: width)
+                
+                let out_rowData = CVPixelBufferGetBaseAddress(outPixelBuffer!)! + yMap * CVPixelBufferGetBytesPerRow(outPixelBuffer!)
+                let out_data = UnsafeMutableBufferPointer<UInt16>(start: out_rowData.assumingMemoryBound(to: UInt16.self), count: width)
+                
+                for index in 0 ..< width {
+                    let depth = data[index]
+                    if depth.isNaN {
+                        out_data[index] = 0
+                    }
+                    else{
+                        out_data[index] = UInt16(depth*1000)
+                    }
+                }
             }
             
-            // scale
-            let scale = CGFloat(CVPixelBufferGetWidth(depthFrame)) / CGFloat(CVPixelBufferGetWidth(videoFrame))
-            let depthPoint = CGPoint(x: CGFloat(CVPixelBufferGetWidth(depthFrame)) - 1.0 - texturePoint.x * scale, y: texturePoint.y * scale)
-            
-            assert(kCVPixelFormatType_DepthFloat16 == CVPixelBufferGetPixelFormatType(depthFrame))
-            CVPixelBufferLockBaseAddress(depthFrame, .readOnly)
-            let rowData = CVPixelBufferGetBaseAddress(depthFrame)! + Int(depthPoint.y) * CVPixelBufferGetBytesPerRow(depthFrame)
-            // swift does not have an Float16 data type. Use UInt16 instead, and then translate
-            var f16Pixel = rowData.assumingMemoryBound(to: UInt16.self)[Int(depthPoint.x)]
             CVPixelBufferUnlockBaseAddress(depthFrame, .readOnly)
             
-            var f32Pixel = Float(0.0)
-            var src = vImage_Buffer(data: &f16Pixel, height: 1, width: 1, rowBytes: 2)
-            var dst = vImage_Buffer(data: &f32Pixel, height: 1, width: 1, rowBytes: 4)
-            vImageConvert_Planar16FtoPlanarF(&src, &dst, 0)
             
-            // Convert the depth frame format to cm
-            let depthString = String(format: "%.2f cm", f32Pixel * 100)
+            let depth_binary_data = Data.init(bytes: CVPixelBufferGetBaseAddress(outPixelBuffer!)!, count: width * height * 2)
             
-            // Update the label
-            DispatchQueue.main.async {
-                self.touchDepth.textColor = UIColor.white
-                self.touchDepth.text = depthString
-                self.touchDepth.sizeToFit()
-            }
-        } else {
-            DispatchQueue.main.async {
-                self.touchDepth.text = ""
-            }
+            
+            CVPixelBufferUnlockBaseAddress(outPixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
+            
+             
+             //let color_ciImage = CIImage(cvPixelBuffer: videoPixelBuffer)
+             self.manager?.uploadImage(color_ciImage:color_ciImage, depth_data:depth_binary_data)
+            */
+            
+           
+            
         }
+        
+        
+        
+        //깊이 사진을 띄워주는 부분
+        
+        if !videoDepthConverter.isPrepared {
+            /*
+             outputRetainedBufferCountHint is the number of pixel buffers we expect to hold on to from the renderer.
+             This value informs the renderer how to size its buffer pool and how many pixel buffers to preallocate. Allow 2 frames of latency
+             to cover the dispatch_async call.
+             */
+            var depthFormatDescription: CMFormatDescription?
+            CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault,
+                                                         imageBuffer: depthPixelBuffer,
+                                                         formatDescriptionOut: &depthFormatDescription)
+            videoDepthConverter.prepare(with: depthFormatDescription!, outputRetainedBufferCountHint: 2)
+        }
+        
+        guard let jetPixelBuffer = videoDepthConverter.render(pixelBuffer: depthPixelBuffer) else {
+            print("Unable to process depth")
+            return
+        }
+
+        
+        
+        
+        
+        if !videoDepthMixer.isPrepared {
+            videoDepthMixer.prepare(with: formatDescription, outputRetainedBufferCountHint: 3)
+        }
+        
+        // Mix the video buffer with the last depth data we received
+        guard let mixedBuffer = videoDepthMixer.mix(videoPixelBuffer: videoPixelBuffer, depthPixelBuffer: jetPixelBuffer) else {
+            print("Unable to combine video and depth")
+            return
+        }
+        
+        jetView.pixelBuffer = mixedBuffer
+        
+        //updateDepthLabel(depthFrame: depthPixelBuffer)
     }
+    
+    
+
+    
+    
+
     
 }
 
