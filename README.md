@@ -1,10 +1,16 @@
 # it is http streammer for bundle fusion custom sensor in another repo.
 
-check http://lodev.org/lodepng/ https://github.com/codecat15/Youtube-tutorial etc.
+check 
+http://lodev.org/lodepng/ 
+https://github.com/codecat15/Youtube-tutorial
+etc.
 
 thanks for all.
 
+it capture iphone xs's front camera color image and depth image(absolute valued)
+and send to http server in png binary format (but you can easily change it to jpeg etc.)
 
+I want to export depth image as undistorted and rectify so, I use pointer & NSData class
 
 
 
